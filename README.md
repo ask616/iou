@@ -45,7 +45,7 @@ You owe Dad $10.5
 
 ---
 
-To make the command available anywhere, just add the following to your `.bashrc`:
+To make the command available anywhere, just add the following to your `.bash_profile` or `.bashrc`:
 
 `alias iou='function _iou() { eval "python3 ~/workspace/scratch/iou.py $*"; };_iou'`
 
