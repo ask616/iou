@@ -31,7 +31,7 @@ def initDataFile():
 def getDataFile():
     if not os.path.exists("./" + data_file_name):
         return initDataFile()
-    
+
     with open(data_file_name) as data_file:
         data = json.load(data_file)
         return data
@@ -43,55 +43,77 @@ def writeDataFile(data):
 def recalculateAllTotals(transaction_history, transaction_totals):
     total_owed = map(lambda t: { "name": t[0], "amount": t[1] }, transaction_totals.items())
     print("Data recalculated, proceeding...")
-    return { total_owed: total_owed, transaction_history: transaction_history }
+    return { "total_owed": total_owed, "transaction_history": transaction_history }
 
 def verifyData(data_file):
     transaction_totals = {}
-    
+
     for transaction in data_file["transaction_history"]:
         if transaction["name"] in transaction_totals:
             transaction_totals[transaction["name"]] += transaction["amount"]
         else:
             transaction_totals[transaction["name"]] = transaction["amount"]
-   
+
     for total in data_file["total_owed"]:
-        if not total["amount"] == transaction_totals[total["name"]]:
+        if not round(total["amount"], 2) == round(transaction_totals[total["name"]], 2):
             print("Corrupted data detected, recalculating...")
             return recalculateAllTotals(data_file["transaction_history"], transaction_totals)
-  
+
     return data_file
- 
+
 def new_transaction(data):
-    transaction_info = input("Enter transaction details: ")   
+    transaction_info = input("Enter transaction details: ").strip()
 
-    user_owed = not transaction_info[0].lower() == "i"
-   
-    if user_owed:
-        # does not start with "I owe"
-        if not "owes me" in transaction_info or not "$" in transaction_info or not "for" in transaction_info:
-            print("Invalid input, please try again.")
-            return data
-        name = transaction_info.split("owes me")[0].strip().title()
-        amount = transaction_info.split("$")[1].split("for")[0].strip()
-        memo = transaction_info.split("for")[1].strip()
+    # user_subject true if the user is the receipient of the transaction
+    user_subject = not transaction_info[0].lower() == "i"
+    paid = "i paid" in transaction_info.lower() or "paid me" in transaction_info.lower()
 
+    if paid:
+        if not user_subject:
+            if not "I paid" in transaction_info or not "$" in transaction_info or not "for" in transaction_info:
+                print("Invalid input, please try again.")
+                return data
+            transaction_rest = transaction_info.split("I paid")[1].strip()
+            name = transaction_rest.split("$")[0].strip().title()
+            amount = transaction_rest.split("$")[1].split("for")[0].strip()
+            memo = transaction_rest.split("for")[1].strip()
+        else:
+            if not "paid me" in transaction_info or not "$" in transaction_info or not "for" in transaction_info:
+                print("Invalid input, please try again.")
+                return data
+            name = transaction_info.split("paid me")[0].strip().title()
+            amount = transaction_info.split("$")[1].split("for")[0].strip()
+            memo = transaction_info.split("for")[1].strip()
     else:
-        # starts with "I owe"
-        if not "I owe" in transaction_info or not "$" in transaction_info or not "for" in transaction_info:
-            print("Invalid input, please try again.")
-            return data
+        if user_subject:
+            # does not start with "I owe"
+            if not "owes me" in transaction_info or not "$" in transaction_info or not "for" in transaction_info:
+                print("Invalid input, please try again.")
+                return data
+            name = transaction_info.split("owes me")[0].strip().title()
+            amount = transaction_info.split("$")[1].split("for")[0].strip()
+            memo = transaction_info.split("for")[1].strip()
 
-        transaction_rest = transaction_info.split("I owe")[1].strip()
-        name = transaction_rest.split("$")[0].strip().title()
-        amount = transaction_rest.split("$")[1].split("for")[0].strip()
-        memo = transaction_rest.split("for")[1].strip()
+        else:
+            # starts with "I owe"
+            if not "I owe" in transaction_info or not "$" in transaction_info or not "for" in transaction_info:
+                print("Invalid input, please try again.")
+                return data
+
+            transaction_rest = transaction_info.split("I owe")[1].strip()
+            name = transaction_rest.split("$")[0].strip().title()
+            amount = transaction_rest.split("$")[1].split("for")[0].strip()
+            memo = transaction_rest.split("for")[1].strip()
 
     try:
-        amount = float(amount) if user_owed else -1 * float(amount)
+        if paid:
+            amount = float(amount) if not user_subject else -1 * float(amount)
+        else:
+            amount = float(amount) if user_subject else -1 * float(amount)
     except:
         print("There was an error, please try again.")
         return data
-    
+
     new_transaction = { "name": name, "amount": amount, "memo": memo }
     data["transaction_history"].insert(0, new_transaction)
 
@@ -102,7 +124,7 @@ def new_transaction(data):
     else:
         new_total = { "name": name, "amount": amount }
         data["total_owed"].insert(0, new_total)
-    
+
     return data
 
 def get_totals(data, args):
